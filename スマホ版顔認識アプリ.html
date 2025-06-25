@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>スマホ版顔認識アプリ</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            touch-action: manipulation;
+        }
+        
+        .header {
+            background-color: #1890ff;
+            color: white;
+            padding: 12px 16px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .container {
+            padding: 16px;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        
+        .tabs {
+            display: flex;
+            background-color: white;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .tab-button {
+            flex: 1;
+            background-color: white;
+            border: none;
+            padding: 16px 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            min-height: 48px;
+        }
+        
+        .tab-button.active {
+            background-color: #e6f7ff;
+            border-bottom-color: #1890ff;
+            color: #1890ff;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .section {
+            background-color: white;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .camera-section {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        
+        .camera-button, .file-button {
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 4px;
+            min-height: 48px;
+            min-width: 120px;
+            touch-action: manipulation;
+        }
+        
+        .camera-button:active, .file-button:active {
+            background-color: #096dd9;
+            transform: scale(0.98);
+        }
+        
+        #image-loader {
+            display: none;
+        }
+        
+        .instructions {
+            background-color: #e6f7ff;
+            border: 1px solid #91d5ff;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        
+        #canvas-container {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #fafafa;
+            touch-action: none;
+        }
+        
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        
+        .face-list {
+            margin-top: 16px;
+        }
+        
+        .face-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        
+        .face-card {
+            background-color: white;
+            border: 1px solid #e6e6e6;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        
+        .face-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .name-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        
+        .name-input:focus {
+            border-color: #1890ff;
+            outline: none;
+            box-shadow: 0 0 4px rgba(24, 144, 255, 0.3);
+        }
+        
+        .face-card p {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .save-button {
+            background-color: #52c41a;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            min-height: 36px;
+            touch-action: manipulation;
+        }
+        
+        .save-button:active {
+            background-color: #389e0d;
+            transform: scale(0.98);
+        }
+        
+        .save-button.saved {
+            background-color: #95de64;
+            color: #333;
+            cursor: not-allowed;
+        }
+        
+        .save-button.saved:active {
+            transform: none;
+        }
+        
+        /* データベース関連 */
+        .stats {
+            background-color: #f0f2f5;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .stats h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .stats p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .export-section {
+            background-color: #f0f2f5;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .export-section h3 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #333;
+            text-align: center;
+        }
+        
+        .export-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .export-button, .import-button {
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            padding: 12px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+        
+        .export-button:active, .import-button:active {
+            background-color: #096dd9;
+            transform: scale(0.98);
+        }
+        
+        .import-button {
+            background-color: #52c41a;
+            grid-column: 1 / -1;
+        }
+        
+        .import-button:active {
+            background-color: #389e0d;
+        }
+        
+        #import-file {
+            display: none;
+        }
+        
+        .database-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .database-card {
+            background-color: white;
+            border: 1px solid #e6e6e6;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        
+        .database-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .database-card h3 {
+            margin: 0 0 6px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .database-card .date {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+        
+        .delete-button {
+            background-color: #ff4d4f;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            width: 100%;
+            min-height: 32px;
+            touch-action: manipulation;
+        }
+        
+        .delete-button:active {
+            background-color: #d9363e;
+            transform: scale(0.98);
+        }
+        
+        /* カメラモーダル */
+        #camera-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+        }
+        
+        .camera-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 400px;
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .camera-container h3 {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        #camera-video {
+            width: 100%;
+            max-height: 300px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        
+        .camera-controls {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .capture-button {
+            flex: 1;
+            background-color: #52c41a;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            min-height: 48px;
+            touch-action: manipulation;
+        }
+        
+        .capture-button:active {
+            background-color: #389e0d;
+            transform: scale(0.98);
+        }
+        
+        .close-camera-button {
+            flex: 1;
+            background-color: #ff4d4f;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            min-height: 48px;
+            touch-action: manipulation;
+        }
+        
+        .close-camera-button:active {
+            background-color: #d9363e;
+            transform: scale(0.98);
+        }
+        
+        /* 空状態のメッセージ */
+        .empty-state {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            padding: 40px 20px;
+        }
+        
+        /* 読み込み中表示 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #1890ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 隠し要素 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📱 スマホ版顔認識アプリ</h1>
+    </div>
+
+    <div class="container">
+        <!-- タブメニュー -->
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('editor')">📝 編集</button>
+            <button class="tab-button" onclick="showTab('database')">💾 データベース</button>
+        </div>
+
+        <!-- 編集タブ -->
+        <div id="editor-tab" class="tab-content active">
+            <div class="section">
+                <h2>📷 写真を撮影・選択</h2>
+                <div class="camera-section">
+                    <button class="camera-button" onclick="openCamera()">📷 カメラで撮影</button>
+                    <button class="file-button" onclick="document.getElementById('image-loader').click()">📁 ファイル選択</button>
+                    <input type="file" id="image-loader" accept="image/*">
+                </div>
+                <div class="instructions">
+                    画像を読み込み後、顔の部分をタッチして選択し、名前を入力して保存してください。
+                </div>
+                <div id="canvas-container">
+                    <div class="empty-state">
+                        📷 写真を撮影またはファイルを選択してください
+                    </div>
+                    <canvas id="image-canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>👤 顔と名前のリスト</h2>
+                <div class="face-list">
+                    <div id="face-grid" class="face-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- データベースタブ -->
+        <div id="database-tab" class="tab-content">
+            <div class="section">
+                <div class="stats">
+                    <h3>📊 データベース統計</h3>
+                    <p>保存済み: <span id="total-count">0</span>人</p>
+                    <p>最新登録: <span id="latest-date">-</span></p>
+                </div>
+                
+                <div class="export-section">
+                    <h3>📤 データ管理</h3>
+                    <div class="export-buttons">
+                        <button class="export-button" onclick="exportToJSON()">📁 JSON出力</button>
+                        <button class="export-button" onclick="exportToHTML()">📄 HTML出力</button>
+                        <button class="import-button" onclick="document.getElementById('import-file').click()">📂 JSONを読込</button>
+                    </div>
+                    <input type="file" id="import-file" accept=".json" onchange="importFromJSON(event)">
+                </div>
+                
+                <h2>👥 保存された顔と名前</h2>
+                <div class="database-grid" id="database-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- カメラモーダル -->
+    <div id="camera-modal">
+        <div class="camera-container">
+            <h3>📷 カメラで撮影</h3>
+            <video id="camera-video" autoplay playsinline muted></video>
+            <div class="camera-controls">
+                <button class="capture-button" onclick="captureImage()">📸 撮影</button>
+                <button class="close-camera-button" onclick="closeCamera()">✕ 閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM要素の取得
+        const imageLoader = document.getElementById('image-loader');
+        const canvas = document.getElementById('image-canvas');
+        const ctx = canvas.getContext('2d');
+        const faceGrid = document.getElementById('face-grid');
+        const databaseGrid = document.getElementById('database-grid');
+        const totalCount = document.getElementById('total-count');
+        const latestDate = document.getElementById('latest-date');
+        const cameraModal = document.getElementById('camera-modal');
+        const cameraVideo = document.getElementById('camera-video');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        // グローバル変数
+        let originalImage = null;
+        let rectangles = [];
+        let isDrawing = false;
+        let startX, startY;
+        let cameraStream = null;
+
+        // タッチイベント用の変数
+        let lastTouchEnd = 0;
+
+        // ダブルタップを防ぐ
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // タブ切り替え
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tabName === 'database') {
+                loadDatabase();
+            }
+        }
+
+        // ファイル選択時の処理
+        imageLoader.addEventListener('change', e => {
+            if (e.target.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = event => {
+                    loadImageFromSource(event.target.result);
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // 画像を共通の処理関数で読み込む
+        function loadImageFromSource(imageSrc) {
+            originalImage = new Image();
+            originalImage.onload = () => {
+                canvas.width = originalImage.width;
+                canvas.height = originalImage.height;
+                rectangles = [];
+                updateDisplay();
+                
+                // 空状態メッセージを隠してキャンバスを表示
+                const emptyState = canvasContainer.querySelector('.empty-state');
+                if (emptyState) {
+                    emptyState.classList.add('hidden');
+                }
+                canvas.style.display = 'block';
+            };
+            originalImage.src = imageSrc;
+        }
+
+        // タッチイベントの処理
+        function getTouchPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const touch = e.touches[0] || e.changedTouches[0];
+            return {
+                x: (touch.clientX - rect.left) * scaleX,
+                y: (touch.clientY - rect.top) * scaleY
+            };
+        }
+
+        // タッチ開始
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            if (!originalImage) return;
+            
+            const pos = getTouchPos(e);
+            startX = pos.x;
+            startY = pos.y;
+            isDrawing = true;
+        }, { passive: false });
+
+        // タッチ移動
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (!isDrawing) return;
+            
+            const pos = getTouchPos(e);
+            updateDisplay();
+            
+            ctx.setLineDash([5, 3]);
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
+            ctx.setLineDash([]);
+        }, { passive: false });
+
+        // タッチ終了
+        canvas.addEventListener('touchend', e => {
+            e.preventDefault();
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            const pos = getTouchPos(e);
+            const newRect = {
+                x: Math.min(startX, pos.x),
+                y: Math.min(startY, pos.y),
+                w: Math.abs(pos.x - startX),
+                h: Math.abs(pos.y - startY)
+            };
+
+            if (newRect.w < 20 || newRect.h < 20) {
+                updateDisplay();
+                return;
+            }
+
+            newRect.name = '';
+            newRect.id = Date.now();
+            rectangles.push(newRect);
+            updateDisplay();
+        }, { passive: false });
+
+        // 表示を更新するメイン関数
+        function updateDisplay() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (originalImage) {
+                ctx.drawImage(originalImage, 0, 0);
+            }
+            
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 2;
+            rectangles.forEach(rect => {
+                ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+            });
+
+            updateFaceList();
+        }
+
+        // 顔リストを更新
+        function updateFaceList() {
+            faceGrid.innerHTML = '';
+            rectangles.forEach(rect => {
+                const faceCanvas = document.createElement('canvas');
+                faceCanvas.width = rect.w;
+                faceCanvas.height = rect.h;
+                faceCanvas.getContext('2d').drawImage(originalImage, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
+                
+                const faceImageData = faceCanvas.toDataURL('image/jpeg', 0.6); // より強い圧縮
+
+                const card = document.createElement('div');
+                card.className = 'face-card';
+                
+                const img = document.createElement('img');
+                img.src = faceImageData;
+                
+                if (rect.name === '' || rect.name === null || rect.name === undefined) {
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'text';
+                    nameInput.className = 'name-input';
+                    nameInput.placeholder = '名前を入力';
+                    nameInput.value = '';
+                    
+                    nameInput.addEventListener('input', (e) => {
+                        rect.name = e.target.value;
+                    });
+                    
+                    card.appendChild(img);
+                    card.appendChild(nameInput);
+                } else {
+                    const p = document.createElement('p');
+                    p.textContent = rect.name;
+                    
+                    card.appendChild(img);
+                    card.appendChild(p);
+                }
+                
+                const saveBtn = document.createElement('button');
+                
+                if (rect.saved) {
+                    saveBtn.className = 'save-button saved';
+                    saveBtn.textContent = '保存済み';
+                    saveBtn.disabled = true;
+                } else {
+                    saveBtn.className = 'save-button';
+                    saveBtn.textContent = '保存';
+                    saveBtn.disabled = false;
+                }
+                
+                saveBtn.onclick = () => {
+                    try {
+                        if (!rect.name || rect.name.trim() === '') {
+                            alert('名前を入力してから保存してください');
+                            return;
+                        }
+                        
+                        if (!originalImage) {
+                            alert('エラー: 元の画像が見つかりません');
+                            return;
+                        }
+                        
+                        const newFaceCanvas = document.createElement('canvas');
+                        newFaceCanvas.width = rect.w;
+                        newFaceCanvas.height = rect.h;
+                        const newCtx = newFaceCanvas.getContext('2d');
+                        
+                        newCtx.drawImage(originalImage, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
+                        const freshFaceImageData = newFaceCanvas.toDataURL('image/jpeg', 0.6);
+                        
+                        const saveResult = saveToDatabase(rect.name, freshFaceImageData);
+                        if (saveResult !== false) {
+                            rect.saved = true;
+                            saveBtn.className = 'save-button saved';
+                            saveBtn.textContent = '保存済み';
+                            saveBtn.disabled = true;
+                        }
+                    } catch (error) {
+                        console.error('保存処理でエラーが発生しました:', error);
+                        alert('保存に失敗しました: ' + error.message);
+                    }
+                };
+                
+                card.appendChild(saveBtn);
+                faceGrid.appendChild(card);
+            });
+        }
+
+        // データベースに保存
+        function saveToDatabase(name, imageData) {
+            try {
+                if (!name || !imageData) {
+                    alert('エラー: 名前または画像データが不正です');
+                    return false;
+                }
+                
+                const savedData = JSON.parse(localStorage.getItem('faceDatabase') || '[]');
+                const newEntry = {
+                    id: Date.now(),
+                    name: name,
+                    image: imageData,
+                    date: new Date().toLocaleString('ja-JP')
+                };
+                
+                savedData.push(newEntry);
+                
+                try {
+                    localStorage.setItem('faceDatabase', JSON.stringify(savedData));
+                    console.log('データベースへの保存が完了しました:', newEntry);
+                    return true;
+                } catch (quotaError) {
+                    if (quotaError.name === 'QuotaExceededError') {
+                        alert('容量制限を超えました。古いデータを削除するか、画像サイズを小さくしてください。\n現在の保存データ数: ' + savedData.length + '件');
+                        return false;
+                    } else {
+                        throw quotaError;
+                    }
+                }
+            } catch (error) {
+                console.error('saveToDatabase関数でエラーが発生しました:', error);
+                alert('データベースへの保存に失敗しました: ' + error.message);
+                return false;
+            }
+        }
+
+        // データベースを読み込んで表示
+        function loadDatabase() {
+            const savedData = JSON.parse(localStorage.getItem('faceDatabase') || '[]');
+            
+            totalCount.textContent = savedData.length;
+            if (savedData.length > 0) {
+                const latest = savedData[savedData.length - 1];
+                latestDate.textContent = latest.date;
+            } else {
+                latestDate.textContent = '-';
+            }
+            
+            databaseGrid.innerHTML = '';
+            
+            if (savedData.length === 0) {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'empty-state';
+                emptyMessage.textContent = 'まだデータが保存されていません';
+                databaseGrid.appendChild(emptyMessage);
+                return;
+            }
+            
+            savedData.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = 'database-card';
+                
+                const img = document.createElement('img');
+                img.src = entry.image;
+                
+                const name = document.createElement('h3');
+                name.textContent = entry.name;
+                
+                const date = document.createElement('div');
+                date.className = 'date';
+                date.textContent = entry.date;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-button';
+                deleteBtn.textContent = '削除';
+                deleteBtn.onclick = () => deleteFromDatabase(entry.id);
+                
+                card.appendChild(img);
+                card.appendChild(name);
+                card.appendChild(date);
+                card.appendChild(deleteBtn);
+                databaseGrid.appendChild(card);
+            });
+        }
+
+        // データベースから削除
+        function deleteFromDatabase(id) {
+            if (confirm('本当に削除しますか？')) {
+                const savedData = JSON.parse(localStorage.getItem('faceDatabase') || '[]');
+                const filteredData = savedData.filter(entry => entry.id !== id);
+                localStorage.setItem('faceDatabase', JSON.stringify(filteredData));
+                loadDatabase();
+            }
+        }
+
+        // カメラ関連の関数
+        async function openCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment', // リアカメラを優先
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+                cameraVideo.srcObject = cameraStream;
+                cameraModal.style.display = 'block';
+            } catch (error) {
+                console.error('カメラアクセスでエラーが発生しました:', error);
+                // フロントカメラでリトライ
+                try {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            facingMode: 'user',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    });
+                    cameraVideo.srcObject = cameraStream;
+                    cameraModal.style.display = 'block';
+                } catch (retryError) {
+                    alert('カメラにアクセスできません。\nブラウザでカメラの使用を許可してください。');
+                }
+            }
+        }
+
+        function closeCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            cameraVideo.srcObject = null;
+            cameraModal.style.display = 'none';
+        }
+
+        function captureImage() {
+            if (!cameraStream) {
+                alert('カメラが起動していません');
+                return;
+            }
+
+            const captureCanvas = document.createElement('canvas');
+            const captureCtx = captureCanvas.getContext('2d');
+            
+            captureCanvas.width = cameraVideo.videoWidth;
+            captureCanvas.height = cameraVideo.videoHeight;
+            
+            captureCtx.drawImage(cameraVideo, 0, 0);
+            const capturedImageData = captureCanvas.toDataURL('image/jpeg', 0.8);
+            
+            loadImageFromSource(capturedImageData);
+            closeCamera();
+        }
+
+        // JSONファイルとしてエクスポート
+        function exportToJSON() {
+            const savedData = JSON.parse(localStorage.getItem('faceDatabase') || '[]');
+            const dataStr = JSON.stringify(savedData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `顔認識データベース_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+        
+        // HTMLファイルとしてエクスポート
+        function exportToHTML() {
+            const savedData = JSON.parse(localStorage.getItem('faceDatabase') || '[]');
+            
+            let htmlContent = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>顔認識データベース - ${new Date().toLocaleDateString('ja-JP')}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 16px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .card img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+        .card h3 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        .card .date {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📱 顔認識データベース</h1>
+        <p>エクスポート日時: ${new Date().toLocaleString('ja-JP')}</p>
+        <p>総登録数: ${savedData.length}人</p>
+    </div>
+    
+    <div class="grid">`;
+    
+            savedData.forEach(entry => {
+                htmlContent += `
+        <div class="card">
+            <img src="${entry.image}" alt="${entry.name}">
+            <h3>${entry.name}</h3>
+            <div class="date">${entry.date}</div>
+        </div>`;
+            });
+            
+            htmlContent += `
+    </div>
+</body>
+</html>`;
+            
+            const dataBlob = new Blob([htmlContent], {type: 'text/html'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `顔認識データベース一覧_${new Date().toISOString().split('T')[0]}.html`;
+            link.click();
+        }
+        
+        // JSONファイルからインポート
+        function importFromJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    if (!Array.isArray(importedData)) {
+                        throw new Error('不正なデータ形式です');
+                    }
+                    
+                    const confirmMessage = `${importedData.length}件のデータをインポートします。\n現在のデータに追加されます。よろしいですか？`;
+                    if (confirm(confirmMessage)) {
+                        const existingData = JSON.parse(localStorage.getItem('faceDatabase') || '[]');
+                        
+                        const updatedImportData = importedData.map(item => ({
+                            ...item,
+                            id: Date.now() + Math.random()
+                        }));
+                        
+                        const mergedData = [...existingData, ...updatedImportData];
+                        localStorage.setItem('faceDatabase', JSON.stringify(mergedData));
+                        
+                        loadDatabase();
+                        alert(`${importedData.length}件のデータをインポートしました！`);
+                    }
+                } catch (error) {
+                    alert('ファイルの読み込みに失敗しました。\n正しいJSONファイルを選択してください。');
+                }
+            };
+            reader.readAsText(file);
+            
+            event.target.value = '';
+        }
+
+        // ページ読み込み時にデータベースを初期化
+        window.addEventListener('load', () => {
+            loadDatabase();
+        });
+
+        // 画面回転時のリサイズ処理
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                if (originalImage) {
+                    updateDisplay();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>
